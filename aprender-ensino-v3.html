@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aprender Ensino — Portal do Professor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    * { font-family: 'Nunito', system-ui, sans-serif; box-sizing: border-box; }
+    body { background: #F0F4FA; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: #bfdbfe; border-radius: 99px; }
+    .fade-in { animation: fadeIn .25s ease both; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .slide-up { animation: slideUp .3s cubic-bezier(.22,.68,0,1.2) both; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(24px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+    .auth-hero { background: linear-gradient(145deg, #0A3161 0%, #1558b0 55%, #1e78e0 100%); }
+    .main-tab {
+      padding: 11px 20px; border: none; background: transparent; cursor: pointer;
+      font-size: 13px; font-weight: 700; border-bottom: 3px solid transparent;
+      transition: all .2s; color: rgba(255,255,255,.45); white-space: nowrap; flex-shrink: 0;
+    }
+    .main-tab.active { color: #fff; border-bottom-color: #60a5fa; background: rgba(255,255,255,.07); }
+    .main-tab:hover:not(.active):not(:disabled) { color: rgba(255,255,255,.8); }
+    .main-tab:disabled { opacity:.3; cursor:not-allowed; }
+    .aluno-tab { padding:5px 13px; border-radius:999px; font-size:12px; cursor:pointer; border:1.5px solid #c5d8f0; background:#fff; color:#5580a8; transition:all .15s; font-weight:700; }
+    .aluno-tab.active { background:#0A3161; border-color:#0A3161; color:#fff; }
+    .aluno-tab.done   { background:#f0fdf4; border-color:#16a34a; color:#15803d; }
+    .btn-qualit {
+      display:block; width:100%; text-align:left;
+      padding:10px 14px; border-radius:12px; font-size:13px; font-weight:600;
+      border:2px solid #e2e8f0; background:#fff; color:#475569;
+      cursor:pointer; transition:all .15s; margin-bottom:6px; line-height:1.3;
+    }
+    .btn-qualit:hover  { border-color:#93c5fd; background:#eff6ff; color:#1d4ed8; }
+    .btn-qualit.sel-1  { border-color:#fca5a5; background:#fef2f2; color:#dc2626; }
+    .btn-qualit.sel-2  { border-color:#fcd34d; background:#fffbeb; color:#b45309; }
+    .btn-qualit.sel-3  { border-color:#93c5fd; background:#eff6ff; color:#1d4ed8; }
+    .btn-qualit.sel-4  { border-color:#6ee7b7; background:#ecfdf5; color:#059669; }
+    .btn-qualit.sel-5  { border-color:#16a34a; background:#dcfce7; color:#15803d; font-weight:800; }
+    .obs-chip {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:6px 14px; border-radius:999px; font-size:12px; font-weight:700;
+      border:2px solid #e2e8f0; background:#fff; color:#64748b;
+      cursor:pointer; transition:all .2s; user-select:none;
+    }
+    .obs-chip:hover    { border-color:#007BFF; color:#007BFF; background:#eff6ff; }
+    .obs-chip.selected { background:#007BFF; border-color:#007BFF; color:#fff; }
+    .chip-aluno { display:inline-flex; align-items:center; gap:5px; background:#0A3161; border-radius:999px; padding:4px 6px 4px 12px; margin:3px; color:#fff; font-size:11px; font-weight:700; }
+    .btn-primary { background:linear-gradient(135deg,#007BFF,#0A3161); transition:all .2s; }
+    .btn-primary:hover { opacity:.88; transform:translateY(-1px); box-shadow:0 6px 20px rgba(0,123,255,.3); }
+    .btn-primary:active { transform:translateY(0); }
+    #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0A3161; color:#fff; padding:11px 22px; border-radius:12px; font-size:13px; font-weight:700; display:none; z-index:9999; box-shadow:0 6px 24px rgba(10,49,97,.4); white-space:nowrap; }
+    .modal-overlay { background:rgba(10,49,97,.55); backdrop-filter:blur(4px); }
+    .hist-card { transition:all .2s; }
+    .hist-card:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(10,49,97,.1); }
+    .grade-badge { width:50px; height:50px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; flex-shrink:0; }
+  </style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- MODAL EXCLUIR -->
+<div id="modal-excluir" class="fixed inset-0 modal-overlay z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full slide-up">
+    <div class="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+      <svg width="28" height="28" fill="none" viewBox="0 0 24 24">
+        <path stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      </svg>
+    </div>
+    <h3 class="font-black text-xl text-slate-800 text-center mb-2">Excluir boletim?</h3>
+    <p class="text-sm text-slate-500 text-center mb-6">Essa ação não pode ser desfeita. O registro será removido permanentemente.</p>
+    <div class="flex gap-3">
+      <button onclick="fecharModalExcluir()" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all">Cancelar</button>
+      <button onclick="confirmarExclusao()"  class="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-all">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH -->
+<div id="tela-auth" class="min-h-screen flex flex-col lg:flex-row">
+
+  <!-- Hero mobile -->
+  <div class="auth-hero lg:hidden flex items-center justify-between gap-3 px-6 py-8">
+    <div>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center flex-shrink-0">
+          <svg width="26" height="26" viewBox="0 0 52 52" fill="none">
+            <polygon points="26,8 44,36 8,36" fill="none" stroke="white" stroke-width="3.5" stroke-linejoin="round"/>
+            <path d="M14 38 Q26 34 38 38" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <line x1="26" y1="34" x2="26" y2="42" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-white font-black text-lg leading-tight tracking-tight">APRENDER</div>
+          <div class="text-blue-200 font-bold text-sm tracking-widest">ENSINO</div>
+        </div>
+      </div>
+      <p class="text-blue-100 text-sm font-semibold">Portal do Professor</p>
+      <p class="text-blue-200 text-xs mt-1">Avaliação pedagógica simplificada.</p>
+    </div>
+    <div class="flex flex-col gap-2 text-blue-100 text-xs font-semibold text-right">
+      <div class="flex items-center justify-end gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-300"></span>Sessões dinâmicas</div>
+      <div class="flex items-center justify-end gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-300"></span>Avaliação por critérios</div>
+      <div class="flex items-center justify-end gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-blue-300"></span>Boletins em PDF</div>
+    </div>
+  </div>
+
+  <!-- Hero desktop -->
+  <div class="hidden lg:flex auth-hero flex-1 flex-col justify-center px-16 py-12">
+    <div class="flex items-center gap-4 mb-14">
+      <div class="w-16 h-16 rounded-2xl bg-white/15 flex items-center justify-center">
+        <svg width="38" height="38" viewBox="0 0 52 52" fill="none">
+          <polygon points="26,8 44,36 8,36" fill="none" stroke="white" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M14 38 Q26 34 38 38" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <line x1="26" y1="34" x2="26" y2="42" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="text-white font-black text-2xl tracking-tight leading-tight uppercase">APRENDER</div>
+        <div class="text-blue-200 font-bold text-xl tracking-widest">ENSINO</div>
+      </div>
+    </div>
+    <h1 class="text-5xl font-black text-white leading-tight mb-6 tracking-tight">
+      Avaliação<br/><span class="text-blue-300">pedagógica</span><br/>simplificada.
+    </h1>
+    <div class="space-y-3 mt-4">
+      <div class="flex items-center gap-3 text-sm text-blue-100"><div class="w-2 h-2 rounded-full bg-blue-300 flex-shrink-0"></div>Sessões dinâmicas — sem turmas fixas</div>
+      <div class="flex items-center gap-3 text-sm text-blue-100"><div class="w-2 h-2 rounded-full bg-blue-300 flex-shrink-0"></div>Avaliação qualitativa em 3 critérios</div>
+      <div class="flex items-center gap-3 text-sm text-blue-100"><div class="w-2 h-2 rounded-full bg-blue-300 flex-shrink-0"></div>Boletins em PDF com um clique</div>
+      <div class="flex items-center gap-3 text-sm text-blue-100"><div class="w-2 h-2 rounded-full bg-blue-300 flex-shrink-0"></div>Histórico com edição e exclusão</div>
+    </div>
+  </div>
+
+  <!-- Formulário -->
+  <div class="flex-1 lg:max-w-[420px] bg-[#F0F4FA] flex items-center justify-center p-6">
+    <div class="w-full max-w-sm bg-white rounded-2xl p-7 shadow-xl border border-slate-100 slide-up">
+      <h2 class="font-black text-xl text-slate-800 mb-1">Bem-vindo de volta 👋</h2>
+      <p class="text-xs text-slate-400 mb-6 font-semibold">Acesse o portal para registrar avaliações</p>
+      <div class="flex bg-slate-100 rounded-xl p-1 mb-6">
+        <button id="tab-login"    onclick="showAuthTab('login')"    class="flex-1 py-2 rounded-lg text-[13px] font-bold text-slate-800 bg-white shadow-sm transition-all">Entrar</button>
+        <button id="tab-cadastro" onclick="showAuthTab('cadastro')" class="flex-1 py-2 rounded-lg text-[13px] text-slate-400 transition-all">Cadastrar</button>
+        <button id="tab-chefe"    onclick="showAuthTab('chefe')"    class="flex-1 py-2 rounded-lg text-[13px] text-slate-400 transition-all">👑 Chefe</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="form-login" class="space-y-4">
+        <div>
+          <label class="text-xs font-bold text-slate-500 block mb-1.5">Usuário</label>
+          <input id="login-user" type="text" placeholder="Seu username"
+            class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all font-semibold"
+            onkeydown="if(event.key==='Enter') fazerLogin()"/>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-500 block mb-1.5">Senha</label>
+          <input id="login-senha" type="password" placeholder="••••••"
+            class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all"
+            onkeydown="if(event.key==='Enter') fazerLogin()"/>
+        </div>
+        <div id="login-erro" class="text-xs text-red-600 bg-red-50 rounded-xl p-3 hidden border border-red-100"></div>
+        <button onclick="fazerLogin()" class="btn-primary w-full text-white py-3.5 rounded-xl text-sm font-bold shadow-lg">Entrar →</button>
+      </div>
+
+      <!-- CADASTRO -->
+      <div id="form-cadastro" class="space-y-4 hidden">
+        <div>
+          <label class="text-xs font-bold text-slate-500 block mb-1.5">Nome Completo</label>
+          <input id="cad-nome" type="text" placeholder="Ex: Prof. Anderson Lima"
+            class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all font-semibold"/>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-500 block mb-1.5">Username</label>
+          <input id="cad-user" type="text" placeholder="Ex: anderson.lima"
+            class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all"/>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-500 block mb-1.5">Senha</label>
+          <input id="cad-senha" type="password" placeholder="Mínimo 4 caracteres"
+            class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition-all"/>
+        </div>
+        <div id="cad-erro" class="text-xs text-red-600 bg-red-50 rounded-xl p-3 hidden border border-red-100"></div>
+        <button onclick="fazerCadastro()" class="btn-primary w-full text-white py-3.5 rounded-xl text-sm font-bold shadow-lg">Criar conta →</button>
+      </div>
+
+      <!-- CHEFE -->
+      <div id="form-chefe" class="space-y-5 text-center hidden">
+        <div class="text-5xl mb-2">🔒</div>
+        <h2 class="font-extrabold text-xl text-slate-800">Acesso da Diretoria</h2>
+        <input id="senha-direta" type="password" placeholder="Senha da diretoria..."
+          class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-center outline-none focus:border-blue-400 font-semibold"
+          onkeydown="if(event.key==='Enter') acessarChefe()"/>
+        <div id="erro-chefe" class="text-xs text-red-600 bg-red-50 rounded-xl p-3 hidden border border-red-100">Senha incorreta.</div>
+        <button onclick="acessarChefe()"
+          class="w-full text-white py-3.5 rounded-xl text-sm font-bold shadow-lg transition-all hover:opacity-90"
+          style="background:linear-gradient(135deg,#0A3161,#1558b0)">Acessar Relatórios 👑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="tela-app" class="hidden min-h-screen flex flex-col">
+
+  <header class="px-4 py-3 flex items-center justify-between sticky top-0 z-30"
+    style="background:linear-gradient(135deg,#0A3161,#1558b0)">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+        <svg width="22" height="22" viewBox="0 0 52 52" fill="none">
+          <polygon points="26,8 44,36 8,36" fill="none" stroke="white" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M14 38 Q26 34 38 38" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <line x1="26" y1="34" x2="26" y2="42" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="font-black text-white text-sm leading-tight tracking-tight uppercase">Aprender Ensino</div>
+        <div id="header-data" class="text-blue-200 text-[10px] font-semibold uppercase tracking-wide"></div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <div id="prof-badge" class="text-white text-xs font-bold bg-white/10 px-3 py-1.5 rounded-xl border border-white/10"></div>
+      <button onclick="fazerLogout()" class="text-white/40 hover:text-white/70 px-2 py-1 text-[10px] font-black uppercase transition-all">Sair</button>
+    </div>
+  </header>
+
+  <nav id="app-nav" class="flex border-b border-white/10 overflow-x-auto" style="background:#0A3161;"></nav>
+
+  <main class="flex-1 max-w-2xl mx-auto w-full px-3 py-5 pb-24">
+
+    <!-- ABA NOVO BOLETIM -->
+    <div id="aba-novo" class="space-y-4 fade-in">
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-5">
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Passo 1 — Horário da Sessão</p>
+        <div class="grid grid-cols-2 gap-3">
+          <button onclick="selecionarHorario('14:00–16:00')" id="btn-h1"
+            class="border-2 border-slate-200 rounded-xl p-4 transition-all text-left hover:border-blue-400">
+            <div class="font-black text-lg text-slate-800">14h – 16h</div>
+            <div class="text-xs text-slate-400 font-semibold mt-0.5">1º Horário</div>
+          </button>
+          <button onclick="selecionarHorario('16:00–18:00')" id="btn-h2"
+            class="border-2 border-slate-200 rounded-xl p-4 transition-all text-left hover:border-blue-400">
+            <div class="font-black text-lg text-slate-800">16h – 18h</div>
+            <div class="text-xs text-slate-400 font-semibold mt-0.5">2º Horário</div>
+          </button>
+        </div>
+      </div>
+      <div id="passo-alunos" class="bg-white rounded-2xl shadow-lg border border-slate-100 p-5 hidden">
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Passo 2 — Alunos Presentes</p>
+        <div id="chips-presentes" class="flex flex-wrap mb-3 gap-1"></div>
+        <div class="relative">
+          <input id="busca-aluno" type="text" placeholder="🔍 Buscar por nome..." autocomplete="off"
+            class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-400 transition-all font-semibold"
+            oninput="filtrarAlunos()"/>
+          <div id="lista-sugestoes"
+            class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-30 hidden"></div>
+        </div>
+        <button id="btn-iniciar" onclick="iniciarAvaliacao()"
+          class="btn-primary mt-4 w-full text-white py-3 rounded-xl font-bold hidden shadow-lg">
+          Começar Avaliações →
+        </button>
+      </div>
+    </div>
+
+    <!-- ABA AVALIAR -->
+    <div id="aba-avaliar" class="hidden fade-in space-y-4">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-100 px-4 py-3">
+        <div class="flex justify-between text-xs text-slate-400 font-bold mb-2">
+          <span id="prog-texto">0/0 avaliados</span>
+          <span id="prog-pct">0%</span>
+        </div>
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div id="prog-bar" class="h-full rounded-full transition-all duration-500"
+            style="width:0%;background:linear-gradient(90deg,#007BFF,#16a34a)"></div>
+        </div>
+      </div>
+      <div id="alunos-tabs" class="flex flex-wrap gap-2"></div>
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-5">
+        <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">
+          <div>
+            <h2 id="av-nome" class="font-black text-xl text-slate-800"></h2>
+            <p id="av-info" class="text-[10px] text-slate-400 uppercase font-bold mt-0.5"></p>
+          </div>
+          <div class="text-right">
+            <div id="av-media" class="font-black text-3xl text-slate-800">—</div>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Média</p>
+          </div>
+        </div>
+        <div class="mb-6">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Matéria Estudada</label>
+          <div class="flex flex-wrap gap-2" id="av-materias-grid"></div>
+        </div>
+        <div class="space-y-5 mb-5" id="criterios-container"></div>
+        <div class="mb-4">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Observações Rápidas</label>
+          <div id="obs-chips-container" class="flex flex-wrap gap-2 mb-3"></div>
+          <textarea id="av-obs" placeholder="Observação adicional (opcional)..."
+            class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-sm h-16 outline-none focus:border-blue-400 transition-all resize-none font-medium"
+            oninput="syncObs()"></textarea>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-anterior" onclick="navAluno(-1)"
+            class="flex-1 bg-slate-100 text-slate-500 py-3 rounded-xl font-bold hidden hover:bg-slate-200 transition-all">← Anterior</button>
+          <button id="btn-proximo" onclick="navAluno(1)"
+            class="btn-primary flex-[2] text-white py-3 rounded-xl font-bold shadow-md">Próximo Aluno →</button>
+          <button id="btn-concluir" onclick="concluirSessao()"
+            class="flex-[2] bg-green-600 text-white py-3 rounded-xl font-bold hidden hover:bg-green-700 transition-all shadow-md">Salvar Sessão ✓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABA HISTÓRICO -->
+    <div id="aba-historico" class="hidden fade-in space-y-4">
+      <div class="flex items-center justify-between px-1">
+        <div>
+          <h2 class="font-black text-xl text-slate-800">Histórico de Relatórios</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Boletins salvos — edite ou exclua com facilidade</p>
+        </div>
+        <div id="hist-contador" class="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-black"></div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 space-y-3">
+        <div class="flex gap-2">
+          <input id="hist-busca" type="text" placeholder="🔍 Buscar por aluno ou matéria..."
+            oninput="aplicarFiltroHist()"
+            class="flex-1 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 transition-all font-semibold"/>
+          <button onclick="limparFiltros()"
+            class="bg-slate-100 text-slate-500 px-4 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all">Limpar</button>
+        </div>
+        <div class="flex gap-2">
+          <input id="hist-data" type="date"
+            oninput="aplicarFiltroHist()"
+            class="flex-1 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 transition-all font-semibold text-slate-600"/>
+          <select id="hist-horario" onchange="aplicarFiltroHist()"
+            class="flex-1 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 transition-all font-semibold text-slate-600 bg-white">
+            <option value="">🕒 Todos os horários</option>
+            <option value="14:00–16:00">14h – 16h</option>
+            <option value="16:00–18:00">16h – 18h</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="hist-lista" class="space-y-3"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── SUPABASE ──────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://mlbztjecmazxjfibbrrf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sYnp0amVjbWF6eGpmaWJicnJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODMyMTQsImV4cCI6MjA5Mzg1OTIxNH0.BXO6BpTny8ehvmljPisSiNCpSlVUoXXOeRWxe97y3XU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const MATERIAS = ['Matemática','Português','Física','Química','História','Inglês','Biologia','Geografia'];
+
+const OBS_CHIPS = [
+  { label:'⚠️ Falta de atenção',      val:'Falta de atenção' },
+  { label:'📚 Tarefa incompleta',      val:'Tarefa incompleta' },
+  { label:'🌟 Excelente progresso',    val:'Excelente progresso' },
+  { label:'🔁 Precisa revisar',        val:'Precisa revisar o conteúdo' },
+  { label:'💬 Participativo',          val:'Muito participativo' },
+  { label:'😟 Dificuldade conceitual', val:'Dificuldade no conceito base' },
+  { label:'🏃 Avançou rapidamente',    val:'Avançou rapidamente no conteúdo' },
+  { label:'🤔 Disperso',              val:'Ficou disperso durante a aula' },
+  { label:'✅ Dominou o conteúdo',    val:'Dominou o conteúdo com facilidade' },
+  { label:'📝 Precisa praticar',       val:'Precisa de mais prática em exercícios' },
+];
+
+const CRITERIOS = [
+  { id:'entendimento', label:'Entendimento', icon:'🧠',
+    opcoes:[{val:1,texto:'Não compreendeu'},{val:2,texto:'Compreendeu pouco'},{val:3,texto:'Compreendeu o básico'},{val:4,texto:'Compreendeu bem'},{val:5,texto:'Dominou o assunto'}] },
+  { id:'resolucao', label:'Resolução de Questões', icon:'✏️',
+    opcoes:[{val:1,texto:'Não conseguiu resolver'},{val:2,texto:'Teve muita dificuldade'},{val:3,texto:'Resolveu a maioria (com erros)'},{val:4,texto:'Fluiu bem (poucos erros)'},{val:5,texto:'Resolveu tudo com facilidade'}] },
+  { id:'comportamento', label:'Comportamento', icon:'🤝',
+    opcoes:[{val:1,texto:'Desinteressado / Disperso'},{val:2,texto:'Inquieto / Conversou muito'},{val:3,texto:'Neutro / Fez o mínimo'},{val:4,texto:'Atento / Focado'},{val:5,texto:'Muito participativo'}] },
+];
+
+function corNota(n) { return n>=5?'#16a34a':n>=4?'#2563eb':n>=3?'#ca8a04':n>=2?'#ea580c':'#dc2626'; }
+function bgNota(n)  { return n>=5?'#dcfce7':n>=4?'#dbeafe':n>=3?'#fef9c3':n>=2?'#ffedd5':'#fee2e2'; }
+function labelNota(critId, val) {
+  const c = CRITERIOS.find(x => x.id === critId);
+  return c?.opcoes.find(o => o.val === val)?.texto || String(val);
+}
+
+let state = {
+  professor: null, modoChefe: false, todosAlunos: [],
+  horario: null, presentes: [], alunoIdx: 0,
+  avaliacoes: {}, editandoId: null, excluindoId: null,
+  cacheRelatorios: [],
+};
+
+const el       = id => document.getElementById(id);
+const iniciais = n  => n.split(' ').map(x => x[0]).join('').toUpperCase().slice(0, 2);
+
+function toast(m, dur = 2600) {
+  const t = el('toast'); t.textContent = m; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', dur);
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+function showAuthTab(t) {
+  ['login','cadastro','chefe'].forEach(tab => {
+    el('form-' + tab).classList.toggle('hidden', tab !== t);
+    const btn = el('tab-' + tab);
+    if (btn) btn.className = `flex-1 py-2 rounded-lg text-[13px] transition-all ${tab === t ? 'font-bold text-slate-800 bg-white shadow-sm' : 'text-slate-400'}`;
+  });
+}
+
+async function fazerLogin() {
+  const user  = el('login-user').value.trim();
+  const senha = el('login-senha').value.trim();
+  const erro  = el('login-erro');
+  erro.classList.add('hidden');
+  if (!user || !senha) { erro.textContent = 'Preencha usuário e senha.'; erro.classList.remove('hidden'); return; }
+  const { data, error } = await sb.from('professores').select('id, nome, username').eq('username', user).eq('senha_hash', senha).maybeSingle();
+  if (error || !data) { erro.textContent = 'Usuário ou senha incorretos.'; erro.classList.remove('hidden'); return; }
+  state.professor = data; state.modoChefe = false;
+  await entrarApp();
+}
+
+async function fazerCadastro() {
+  const nome  = el('cad-nome').value.trim();
+  const user  = el('cad-user').value.trim();
+  const senha = el('cad-senha').value.trim();
+  const erro  = el('cad-erro');
+  erro.classList.add('hidden');
+  if (!nome || !user || !senha || senha.length < 4) { erro.textContent = 'Preencha todos os campos (senha mínima 4 caracteres).'; erro.classList.remove('hidden'); return; }
+  const { error } = await sb.from('professores').insert({ nome, username: user, senha_hash: senha });
+  if (error) { erro.textContent = error.code === '23505' ? 'Username já cadastrado.' : 'Erro: ' + error.message; erro.classList.remove('hidden'); return; }
+  toast('✓ Conta criada! Faça login.');
+  showAuthTab('login');
+}
+
+function acessarChefe() {
+  el('erro-chefe').classList.add('hidden');
+  if (el('senha-direta').value === '1234') {
+    state.professor = { id: 'chefe', nome: 'Diretoria', username: 'chefe' };
+    state.modoChefe = true;
+    entrarApp();
+  } else {
+    el('erro-chefe').classList.remove('hidden');
+  }
+}
+
+async function entrarApp() {
+  el('tela-auth').classList.add('hidden');
+  el('tela-app').classList.remove('hidden');
+  el('header-data').textContent = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'short' }).toUpperCase();
+  el('prof-badge').textContent = state.professor.nome;
+  const { data: alunos } = await sb.from('alunos').select('id, nome').order('nome');
+  state.todosAlunos = alunos || [];
+  const nav = el('app-nav');
+  nav.innerHTML = '';
+  if (state.modoChefe) {
+    nav.innerHTML = `<button class="main-tab active" id="ntab-historico" onclick="irAba('historico')">👑 Relatórios Gerais</button>`;
+    irAba('historico');
+  } else {
+    nav.innerHTML = `
+      <button class="main-tab active" id="ntab-novo"      onclick="irAba('novo')">✏️ Novo Boletim</button>
+      <button class="main-tab"        id="ntab-historico" onclick="irAba('historico')">📊 Histórico de Relatórios</button>`;
+    irAba('novo');
+  }
+}
+
+function fazerLogout() { location.reload(); }
+
+// ── NAVEGAÇÃO ─────────────────────────────────────────────────────────────────
+function irAba(aba) {
+  ['novo','avaliar','historico'].forEach(a => {
+    const abaEl = el('aba-' + a); if (abaEl) abaEl.classList.toggle('hidden', a !== aba);
+    const tabEl = el('ntab-' + a); if (tabEl) tabEl.classList.toggle('active', a === aba);
+  });
+  if (aba === 'historico') renderHistorico();
+  if (aba === 'novo') el('aba-avaliar').classList.add('hidden');
+}
+
+// ── HORÁRIO ───────────────────────────────────────────────────────────────────
+function selecionarHorario(h) {
+  state.horario = h;
+  ['btn-h1','btn-h2'].forEach(id => {
+    const btn    = el(id);
+    const active = (id === 'btn-h1' && h === '14:00–16:00') || (id === 'btn-h2' && h === '16:00–18:00');
+    btn.className = `border-2 rounded-xl p-4 transition-all text-left ${active ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`;
+    btn.querySelector('div').style.color = active ? '#1d4ed8' : '';
+  });
+  el('passo-alunos').classList.remove('hidden');
+  el('passo-alunos').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── BUSCA ALUNOS ──────────────────────────────────────────────────────────────
+function filtrarAlunos() {
+  const q = el('busca-aluno').value.toLowerCase();
+  const s = el('lista-sugestoes');
+  s.innerHTML = '';
+  if (!q) { s.classList.add('hidden'); return; }
+  const matches = state.todosAlunos.filter(a => a.nome.toLowerCase().includes(q) && !state.presentes.find(p => p.id === a.id)).slice(0, 7);
+  if (!matches.length) { s.classList.add('hidden'); return; }
+  matches.forEach(a => {
+    const d = document.createElement('div');
+    d.className = 'p-3 hover:bg-blue-50 cursor-pointer border-b border-slate-100 text-sm font-bold text-slate-700 flex items-center gap-3';
+    d.innerHTML = `<div class="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-[11px] font-black text-blue-600">${iniciais(a.nome)}</div>${a.nome}`;
+    d.onclick = () => { state.presentes.push(a); renderChips(); el('busca-aluno').value = ''; s.classList.add('hidden'); };
+    s.appendChild(d);
+  });
+  s.classList.remove('hidden');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#busca-aluno') && !e.target.closest('#lista-sugestoes'))
+    el('lista-sugestoes')?.classList.add('hidden');
+});
+
+function renderChips() {
+  const c = el('chips-presentes');
+  c.innerHTML = '';
+  state.presentes.forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'chip-aluno';
+    d.innerHTML = `${p.nome.split(' ')[0]} <span onclick="removerAluno('${p.id}')" class="ml-1 opacity-50 cursor-pointer hover:opacity-100 text-sm leading-none">✕</span>`;
+    c.appendChild(d);
+  });
+  const bi = el('btn-iniciar');
+  bi.classList.toggle('hidden', state.presentes.length === 0);
+  if (state.presentes.length > 0) bi.textContent = `Começar Avaliações (${state.presentes.length} aluno${state.presentes.length > 1 ? 's' : ''}) →`;
+}
+
+function removerAluno(id) { state.presentes = state.presentes.filter(x => x.id !== id); renderChips(); }
+
+function iniciarAvaliacao() {
+  if (!state.horario) { toast('⚠️ Selecione o horário primeiro!'); return; }
+  state.alunoIdx = 0;
+  state.presentes.forEach(p => { state.avaliacoes[p.id] = { materia:'Matemática', entendimento:3, resolucao:3, comportamento:3, obs:'', chipsAtivos:[] }; });
+  el('aba-novo').classList.add('hidden');
+  el('aba-avaliar').classList.remove('hidden');
+  renderAvaliar();
+}
+
+// ── AVALIAR ───────────────────────────────────────────────────────────────────
+function renderAvaliar() {
+  const a  = state.presentes[state.alunoIdx];
+  const av = state.avaliacoes[a.id];
+  el('av-nome').textContent = a.nome;
+  el('av-info').textContent = state.horario;
+  el('av-obs').value        = av.obsExtra || '';
+
+  const t = el('alunos-tabs'); t.innerHTML = '';
+  state.presentes.forEach((p, i) => {
+    const b = document.createElement('button');
+    const done = i !== state.alunoIdx && state.avaliacoes[p.id]?.entendimento;
+    b.className   = `aluno-tab ${i === state.alunoIdx ? 'active' : done ? 'done' : ''}`;
+    b.textContent = p.nome.split(' ')[0] + (done ? ' ✓' : '');
+    b.onclick = () => { state.alunoIdx = i; renderAvaliar(); };
+    t.appendChild(b);
+  });
+
+  const mg = el('av-materias-grid'); mg.innerHTML = '';
+  MATERIAS.forEach(m => {
+    const b = document.createElement('button'); const sel = av.materia === m;
+    b.className   = `border-2 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${sel ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 text-slate-500 hover:border-blue-300'}`;
+    b.textContent = m;
+    b.onclick = () => { state.avaliacoes[a.id].materia = m; renderAvaliar(); };
+    mg.appendChild(b);
+  });
+
+  const cc = el('criterios-container'); cc.innerHTML = '';
+  CRITERIOS.forEach(crit => {
+    const valAtual = av[crit.id];
+    const div = document.createElement('div');
+    div.className = 'border border-slate-100 rounded-xl p-4 bg-slate-50/50';
+    div.innerHTML = `
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-base">${crit.icon}</span>
+        <span class="font-bold text-slate-700 text-sm">${crit.label}</span>
+        <span class="ml-auto font-black text-xs px-2 py-0.5 rounded-full" style="background:${bgNota(valAtual)};color:${corNota(valAtual)}">${valAtual}/5</span>
+      </div>
+      <div class="space-y-1.5">
+        ${crit.opcoes.map(op => `
+          <button onclick="selecionarNota('${a.id}','${crit.id}',${op.val})" class="btn-qualit ${valAtual === op.val ? 'sel-' + op.val : ''}">
+            <span class="inline-block w-5 h-5 rounded-full text-center text-[11px] font-black mr-2 leading-5 ${valAtual === op.val ? 'bg-white/60' : 'bg-slate-100 text-slate-400'}">${op.val}</span>${op.texto}
+          </button>`).join('')}
+      </div>`;
+    cc.appendChild(div);
+  });
+
+  const oc = el('obs-chips-container'); oc.innerHTML = '';
+  OBS_CHIPS.forEach(chip => {
+    const b = document.createElement('button');
+    b.className   = `obs-chip ${(av.chipsAtivos || []).includes(chip.val) ? 'selected' : ''}`;
+    b.textContent = chip.label;
+    b.onclick = () => toggleChip(a.id, chip.val);
+    oc.appendChild(b);
+  });
+
+  atualizarMedia(av);
+  const feitos = state.presentes.filter(p => state.avaliacoes[p.id]?.entendimento).length;
+  const pct    = Math.round(feitos / state.presentes.length * 100);
+  el('prog-texto').textContent = `${feitos}/${state.presentes.length} avaliados`;
+  el('prog-pct').textContent   = pct + '%';
+  el('prog-bar').style.width   = pct + '%';
+  el('btn-anterior').classList.toggle('hidden', state.alunoIdx === 0);
+  el('btn-proximo').classList.toggle('hidden',  state.alunoIdx === state.presentes.length - 1);
+  el('btn-concluir').classList.toggle('hidden', state.alunoIdx !== state.presentes.length - 1);
+}
+
+function toggleChip(alunoId, val) {
+  const av = state.avaliacoes[alunoId];
+  if (!av.chipsAtivos) av.chipsAtivos = [];
+  const idx = av.chipsAtivos.indexOf(val);
+  if (idx >= 0) av.chipsAtivos.splice(idx, 1); else av.chipsAtivos.push(val);
+  montarObs(alunoId); renderAvaliar();
+}
+
+function selecionarNota(alunoId, critId, val) { state.avaliacoes[alunoId][critId] = val; renderAvaliar(); }
+
+function atualizarMedia(av) {
+  const m = ((av.entendimento + av.resolucao + av.comportamento) / 3).toFixed(1);
+  el('av-media').textContent = m; el('av-media').style.color = corNota(parseFloat(m));
+}
+
+function navAluno(d) { state.alunoIdx += d; renderAvaliar(); }
+
+function syncObs() {
+  const a = state.presentes[state.alunoIdx];
+  state.avaliacoes[a.id].obsExtra = el('av-obs').value.trim();
+  montarObs(a.id);
+}
+
+function montarObs(alunoId) {
+  const av    = state.avaliacoes[alunoId];
+  const chips = (av.chipsAtivos || []).join('. ');
+  const extra = av.obsExtra || '';
+  av.obs = chips && extra ? chips + '. ' + extra : chips || extra;
+}
+
+// ── SALVAR ────────────────────────────────────────────────────────────────────
+async function concluirSessao() {
+  const btn = el('btn-concluir');
+  btn.textContent = 'Salvando...'; btn.disabled = true;
+  const hoje   = new Date();
+  const dataBR = hoje.toLocaleDateString('pt-BR');
+
+  if (state.editandoId) {
+    const a  = state.presentes[0];
+    const av = state.avaliacoes[a.id];
+    const { error } = await sb.from('relatorios').update({
+      horario: state.horario, alunoNome: a.nome, materia: av.materia,
+      entendimento: av.entendimento, resolucao: av.resolucao,
+      comportamento: av.comportamento, observacao: av.obs,
+    }).eq('id', state.editandoId);
+    if (error) { toast('❌ Erro ao atualizar: ' + error.message); btn.textContent = 'Salvar Alterações ✓'; btn.disabled = false; return; }
+    toast('✓ Boletim atualizado!'); state.editandoId = null;
+  } else {
+    const rows = state.presentes.map(p => {
+      const av = state.avaliacoes[p.id];
+      return { profNome: state.professor.nome, horario: state.horario, dataBR, alunoNome: p.nome, materia: av.materia, entendimento: av.entendimento, resolucao: av.resolucao, comportamento: av.comportamento, observacao: av.obs };
+    });
+    const { error } = await sb.from('relatorios').insert(rows);
+    if (error) { toast('❌ Erro ao salvar: ' + error.message); btn.textContent = 'Salvar Sessão ✓'; btn.disabled = false; return; }
+    toast(`✓ ${rows.length} boletim(ns) salvo(s)!`);
+  }
+  setTimeout(() => { btn.textContent = 'Salvar Sessão ✓'; btn.disabled = false; irAba('historico'); }, 900);
+}
+
+// ── HISTÓRICO ─────────────────────────────────────────────────────────────────
+async function renderHistorico() {
+  const lista = el('hist-lista');
+  lista.innerHTML = '<div class="text-center py-10 text-slate-400 text-sm font-semibold">⏳ Carregando relatórios...</div>';
+  let query = sb.from('relatorios').select('*').order('id', { ascending: false });
+  if (!state.modoChefe) query = query.eq('profNome', state.professor.nome);
+  const { data, error } = await query;
+  if (error) { lista.innerHTML = `<div class="text-center py-10 text-red-400 text-sm font-semibold">❌ Erro: ${error.message}</div>`; return; }
+  state.cacheRelatorios = data || [];
+  aplicarFiltroHist();
+}
+
+function aplicarFiltroHist() {
+  const q       = (el('hist-busca')?.value   || '').toLowerCase().trim();
+  const dataSel = (el('hist-data')?.value    || '').trim();
+  const horSel  = (el('hist-horario')?.value || '').trim();
+
+  const filtrado = state.cacheRelatorios.filter(r => {
+    const passaTexto = !q ||
+      r.alunoNome?.toLowerCase().includes(q) ||
+      r.materia?.toLowerCase().includes(q)   ||
+      r.profNome?.toLowerCase().includes(q);
+
+    let passaData = true;
+    if (dataSel && r.dataBR) {
+      const p = r.dataBR.split('/');
+      if (p.length === 3) passaData = `${p[2]}-${p[1]}-${p[0]}` === dataSel;
+    }
+
+    const passaHorario = !horSel || r.horario === horSel;
+    return passaTexto && passaData && passaHorario;
+  });
+
+  const lista = el('hist-lista');
+  lista.innerHTML = '';
+  el('hist-contador').textContent = `${filtrado.length} relatório${filtrado.length !== 1 ? 's' : ''}`;
+
+  if (!filtrado.length) {
+    lista.innerHTML = `
+      <div class="text-center py-16 text-slate-400">
+        <div class="text-5xl mb-4">📋</div>
+        <p class="font-bold text-sm">Nenhum relatório encontrado</p>
+        <p class="text-xs mt-1">Ajuste os filtros ou crie um novo boletim</p>
+      </div>`;
+    return;
+  }
+
+  filtrado.forEach(r => {
+    const media = ((r.entendimento + r.resolucao + r.comportamento) / 3).toFixed(1);
+    const mf    = parseFloat(media);
+    const card  = document.createElement('div');
+    card.className = 'hist-card bg-white rounded-2xl shadow-lg border border-slate-100 p-5 fade-in';
+    card.innerHTML = `
+      <div class="flex items-start justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center font-black text-blue-600 text-sm flex-shrink-0">${iniciais(r.alunoNome || '??')}</div>
+          <div>
+            <div class="font-black text-slate-800 text-base leading-tight">${r.alunoNome || '—'}</div>
+            <div class="text-xs text-slate-400 font-semibold mt-0.5">${r.materia || '—'} · ${r.dataBR || '—'} · ${r.horario || '—'}</div>
+            <div class="text-xs text-blue-500 font-semibold mt-0.5">${r.profNome || 'Professor'}</div>
+          </div>
+        </div>
+        <div class="grade-badge" style="background:${bgNota(mf)};color:${corNota(mf)}">${media}</div>
+      </div>
+      <div class="grid grid-cols-3 gap-2 mb-4">
+        ${[['entendimento','🧠','Entend.'],['resolucao','✏️','Resolução'],['comportamento','🤝','Comport.']].map(([c,icon,lbl]) => `
+          <div class="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">${icon} ${lbl}</div>
+            <div class="font-black mt-1" style="color:${corNota(r[c])}">${r[c]}/5</div>
+          </div>`).join('')}
+      </div>
+      ${r.observacao ? `<div class="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-4"><p class="text-xs text-amber-800 italic leading-relaxed">"${r.observacao}"</p></div>` : ''}
+      <div class="flex gap-2">
+        <button onclick="editarRelatorio('${r.id}')"
+          class="flex-1 flex items-center justify-center gap-1.5 border-2 border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 font-bold text-xs py-2.5 rounded-xl transition-all">✏️ Editar</button>
+        <button onclick="abrirModalExcluir('${r.id}')"
+          class="flex-1 flex items-center justify-center gap-1.5 border-2 border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-bold text-xs py-2.5 rounded-xl transition-all">🗑️ Excluir</button>
+        <button onclick="gerarPDF('${r.id}')"
+          class="flex-1 flex items-center justify-center gap-1.5 btn-primary text-white font-bold text-xs py-2.5 rounded-xl shadow-sm">⬇️ PDF</button>
+      </div>`;
+    lista.appendChild(card);
+  });
+}
+
+function limparFiltros() {
+  el('hist-busca').value   = '';
+  el('hist-data').value    = '';
+  el('hist-horario').value = '';
+  aplicarFiltroHist();
+}
+
+// ── EDITAR ────────────────────────────────────────────────────────────────────
+async function editarRelatorio(id) {
+  const { data: r, error } = await sb.from('relatorios').select('*').eq('id', id).single();
+  if (error || !r) { toast('❌ Registro não encontrado.'); return; }
+  state.editandoId = id;
+  state.presentes  = [{ id: 'edit-fake', nome: r.alunoNome }];
+  state.horario    = r.horario;
+  state.avaliacoes = { 'edit-fake': { materia: r.materia, entendimento: r.entendimento, resolucao: r.resolucao, comportamento: r.comportamento, obs: r.observacao || '', obsExtra: r.observacao || '', chipsAtivos: [] } };
+  state.alunoIdx = 0;
+  el('aba-historico').classList.add('hidden');
+  el('aba-novo').classList.add('hidden');
+  el('aba-avaliar').classList.remove('hidden');
+  el('ntab-novo')?.classList.remove('active');
+  el('ntab-historico')?.classList.remove('active');
+  el('btn-proximo').classList.add('hidden');
+  el('btn-anterior').classList.add('hidden');
+  el('btn-concluir').classList.remove('hidden');
+  el('btn-concluir').textContent = 'Salvar Alterações ✓';
+  el('btn-concluir').disabled    = false;
+  renderAvaliar();
+  toast('🖊️ Editando boletim de ' + r.alunoNome);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── EXCLUIR ───────────────────────────────────────────────────────────────────
+function abrirModalExcluir(id) { state.excluindoId = id; el('modal-excluir').classList.remove('hidden'); el('modal-excluir').classList.add('flex'); }
+function fecharModalExcluir()  { state.excluindoId = null; el('modal-excluir').classList.add('hidden'); el('modal-excluir').classList.remove('flex'); }
+
+async function confirmarExclusao() {
+  const { error } = await sb.from('relatorios').delete().eq('id', state.excluindoId);
+  fecharModalExcluir();
+  if (error) { toast('❌ Erro ao excluir: ' + error.message); return; }
+  toast('🗑️ Boletim excluído.');
+  renderHistorico();
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+async function gerarPDF(id) {
+  const { data: r, error } = await sb.from('relatorios').select('*').eq('id', id).single();
+  if (error || !r) { toast('❌ Erro ao buscar dados.'); return; }
+  toast('⏳ Gerando PDF...', 6000);
+
+  const media = ((r.entendimento + r.resolucao + r.comportamento) / 3).toFixed(1);
+  const mf    = parseFloat(media);
+
+  function corMedia(n) {
+    if (n >= 4.5) return { bg:'#dcfce7', tx:'#15803d', label:'Excelente' };
+    if (n >= 3.5) return { bg:'#dbeafe', tx:'#1d4ed8', label:'Bom' };
+    if (n >= 2.5) return { bg:'#fef9c3', tx:'#854d0e', label:'Regular' };
+    return           { bg:'#fee2e2', tx:'#b91c1c', label:'Atencao' };
+  }
+  function corCrit(n) {
+    if (n >= 5) return { bg:'#dcfce7', tx:'#15803d' };
+    if (n >= 4) return { bg:'#dbeafe', tx:'#1d4ed8' };
+    if (n >= 3) return { bg:'#fef9c3', tx:'#854d0e' };
+    if (n >= 2) return { bg:'#ffedd5', tx:'#c2410c' };
+    return           { bg:'#fee2e2', tx:'#b91c1c' };
+  }
+
+  const cm = corMedia(mf);
+  const ce = corCrit(r.entendimento);
+  const cr = corCrit(r.resolucao);
+  const cc = corCrit(r.comportamento);
+  const dataExtenso = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+
+  function critRow(label, critId, val, cor) {
+    return `<tr>
+      <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#334155;">${label}</td>
+      <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;text-align:right;">
+        <span style="display:inline-block;background:${cor.bg};color:${cor.tx};font-size:12px;font-weight:800;padding:3px 12px;border-radius:20px;">
+          ${val}/5 — ${labelNota(critId, val)}
+        </span>
+      </td>
+    </tr>`;
+  }
+
+  const nomeArq = `Boletim_${(r.alunoNome||'Aluno').replace(/\s+/g,'_')}_${(r.dataBR||'').replace(/\//g,'-')}.pdf`;
+
+  const boletimHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,Helvetica,sans-serif; background:#ffffff; width:210mm; }
+  .cabecalho { background:#0A3161; padding:28px 36px; display:flex; align-items:center; justify-content:space-between; }
+  .logo-box { width:54px; height:54px; background:rgba(255,255,255,0.15); border-radius:14px; border:2px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .escola-nome { font-size:20px; font-weight:900; color:#fff; text-transform:uppercase; letter-spacing:-0.5px; }
+  .escola-sub  { font-size:10px; font-weight:600; color:rgba(255,255,255,0.6); letter-spacing:2px; text-transform:uppercase; margin-top:3px; }
+  .data-emissao-label { font-size:10px; color:rgba(255,255,255,0.5); font-weight:600; text-transform:uppercase; letter-spacing:1px; text-align:right; }
+  .data-emissao-valor { font-size:12px; color:#fff; font-weight:700; margin-top:3px; text-align:right; }
+  .faixa { height:4px; background:linear-gradient(90deg,#60a5fa,#007BFF,#0A3161); }
+  .corpo { padding:28px 36px; }
+  .aluno-box { background:#f8faff; border:1.5px solid #dbeafe; border-left:5px solid #007BFF; border-radius:10px; padding:16px 20px; margin-bottom:20px; }
+  .aluno-label { font-size:10px; font-weight:700; color:#93c5fd; text-transform:uppercase; letter-spacing:2px; margin-bottom:4px; }
+  .aluno-nome  { font-size:26px; font-weight:900; color:#0A3161; line-height:1.1; }
+  .info-grid { display:flex; gap:10px; margin-bottom:20px; }
+  .info-card { flex:1; background:#f8faff; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px 16px; }
+  .info-card-label { font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:3px; }
+  .info-card-valor { font-size:14px; font-weight:900; color:#0A3161; }
+  .media-box { text-align:center; background:${cm.bg}; border:2px solid ${cm.tx}; border-radius:14px; padding:20px 36px; margin-bottom:20px; }
+  .media-titulo { font-size:10px; font-weight:700; color:${cm.tx}; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px; }
+  .media-numero { font-size:60px; font-weight:900; color:${cm.tx}; line-height:1; margin-bottom:4px; }
+  .media-sub    { font-size:12px; font-weight:700; color:${cm.tx}; }
+  .secao-titulo { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:2px; margin-bottom:10px; }
+  table { width:100%; border-collapse:collapse; border:1.5px solid #e2e8f0; margin-bottom:20px; }
+  thead tr { background:#f8faff; }
+  th { padding:9px 14px; text-align:left; font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:1px; border-bottom:1.5px solid #e2e8f0; }
+  th:last-child { text-align:right; }
+  .obs-box { background:#fffbeb; border:1.5px solid #fde68a; border-left:5px solid #f59e0b; border-radius:10px; padding:14px 18px; font-size:13px; color:#78350f; font-style:italic; line-height:1.7; margin-bottom:24px; }
+  .rodape { border-top:1.5px solid #e2e8f0; padding-top:16px; display:flex; align-items:center; justify-content:space-between; }
+  .rodape-texto { font-size:9px; color:#cbd5e1; font-weight:600; line-height:1.8; }
+  .badge-oficial { background:#0A3161; color:white; font-size:8px; font-weight:700; padding:4px 10px; border-radius:6px; text-transform:uppercase; letter-spacing:1px; }
+</style></head><body>
+  <div class="cabecalho">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="logo-box">
+        <svg width="32" height="32" viewBox="0 0 52 52" fill="none">
+          <polygon points="26,8 44,36 8,36" fill="none" stroke="white" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M14 38 Q26 34 38 38" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          <line x1="26" y1="34" x2="26" y2="42" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div><div class="escola-nome">APRENDER ENSINO</div><div class="escola-sub">Boletim Pedagogico Individual</div></div>
+    </div>
+    <div><div class="data-emissao-label">Data de emissao</div><div class="data-emissao-valor">${dataExtenso}</div></div>
+  </div>
+  <div class="faixa"></div>
+  <div class="corpo">
+    <div class="aluno-box"><div class="aluno-label">Aluno(a)</div><div class="aluno-nome">${r.alunoNome}</div></div>
+    <div class="info-grid">
+      <div class="info-card"><div class="info-card-label">Materia</div><div class="info-card-valor">${r.materia}</div></div>
+      <div class="info-card"><div class="info-card-label">Professor(a)</div><div class="info-card-valor">${r.profNome}</div></div>
+      <div class="info-card"><div class="info-card-label">Horario</div><div class="info-card-valor">${r.horario}</div></div>
+    </div>
+    <div class="media-box">
+      <div class="media-titulo">Media Geral da Sessao</div>
+      <div class="media-numero">${media}</div>
+      <div class="media-sub">de 5.0 &nbsp;&middot;&nbsp; ${cm.label}</div>
+    </div>
+    <div class="secao-titulo">Avaliacao por Criterio</div>
+    <table>
+      <thead><tr><th>Criterio</th><th style="text-align:right;">Resultado</th></tr></thead>
+      <tbody>
+        ${critRow('Entendimento',  'entendimento',  r.entendimento,  ce)}
+        ${critRow('Resolucao',     'resolucao',     r.resolucao,     cr)}
+        ${critRow('Comportamento', 'comportamento', r.comportamento, cc)}
+      </tbody>
+    </table>
+    <div class="secao-titulo">Observacoes do Professor</div>
+    <div class="obs-box">${r.observacao || 'Nenhuma observacao registrada para esta sessao.'}</div>
+    <div class="rodape">
+      <div class="rodape-texto">Aprender Ensino — Acompanhamento e Ensino Personalizado<br>Rua Joaquim Lima, 45 · Papicu · Fortaleza, CE 60175-005</div>
+      <div class="badge-oficial">Documento Oficial</div>
+    </div>
+  </div>
+</body></html>`;
+
+  try {
+    await html2pdf().set({
+      margin:      [10, 10, 10, 10],
+      filename:    nomeArq,
+      image:       { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:   { mode: ['avoid-all'] },
+    }).from(boletimHTML, 'string').save();
+    toast('✓ Boletim gerado com sucesso!');
+  } catch(e) {
+    toast('❌ Erro: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>
