@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(python3)",
+      "Bash(ls \"C:\\\\Users\\\\Usuario\\\\.claude\\\\projects\\\\c--Users-Usuario-Desktop-dashboard\\\\\" | sort)",
+      "Read(//c/Users/Usuario/.claude/projects/**)",
+      "Bash(ls /mnt/c/Users/Usuario/.claude/projects/c--Users-Usuario-Desktop-dashboard/ | sort)",
+      "Read(//mnt/c/Users/Usuario/.claude/projects/**)"
+    ]
+  }
+}
